@@ -1,0 +1,115 @@
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:todo_app/model/note_model.dart';
+import 'package:uuid/uuid.dart';
+
+class NoteService {
+  List<Note> allNotes = [
+    Note(
+      id: const Uuid().v4(),
+      title: "Meeting Notes",
+      category: "Work",
+      content:
+          "Discussed project deadlines and deliverables. Assigned tasks to team members and set up follow-up meetings to track progress.",
+      date: DateTime.now(),
+    ),
+    Note(
+      id: const Uuid().v4(),
+      title: "Grocery List",
+      category: "Personal",
+      content:
+          "Bought milk, eggs, bread, fruits, and vegetables from the local grocery store. Also added some snacks for the week.",
+      date: DateTime.now(),
+    ),
+    Note(
+      id: const Uuid().v4(),
+      title: "Book Recommendations",
+      category: "Hobby",
+      content:
+          "Recently read 'Sapiens' by Yuval Noah Harari, which offered fascinating insights into the history of humankind. Also enjoyed 'Atomic Habits' by James Clear, a practical guide to building good habits and breaking bad ones.",
+      date: DateTime.now(),
+    ),
+  ];
+  //create a new database referance for notes
+
+  final _myBox = Hive.box("notes");
+
+  //check wheather the user is new user
+
+  Future<bool> isNewUser() async {
+    return _myBox.isEmpty;
+  }
+
+  //method to crate the i initial notes if the box is emty
+  Future<void> createInitialNotes() async {
+    if (_myBox.isEmpty) {
+      await _myBox.put("notes", allNotes);
+    }
+  }
+
+  //Method to load the notes
+
+  Future<List<Note>> loadNotes() async {
+    final dynamic notes = _myBox.get("notes");
+    if (notes != null && notes is List<dynamic>) {
+      return notes.cast<Note>().toList();
+    }
+    return [];
+  }
+  //loop through all notes and create an object where the key is the category and the value is the notes in that category
+
+  Map<String, List<Note>> getNotesByCategoryMap(List<Note> allNotes) {
+    final Map<String, List<Note>> notesByCategory = {};
+
+    for (final note in allNotes) {
+      if (notesByCategory.containsKey((note.category))) {
+        notesByCategory[note.category]!.add(note);
+      } else {
+        notesByCategory[note.category] = [note];
+      }
+    }
+    return notesByCategory;
+  }
+
+  //Method to get note category from the note service
+  Future<List<Note>> getNotesByCategoryName(String category) async {
+    final dynamic allNotes = await _myBox.get("notes");
+    final List<Note> notes = [];
+
+    for (final note in allNotes) {
+      if (note.category == category) {
+        notes.add(note);
+      }
+    }
+    return notes;
+  }
+
+  //method to edit and update notes
+  Future<void> updateNote(Note note) async {
+    try {
+      final dynamic allNotes = await _myBox.get('notes');
+      final int index = allNotes.indexWhere();
+    } catch (err) {
+      print(err.toString());
+    }
+  }
+
+  // Method to add a new note
+  Future<void> addNote(Note note) async {
+    final dynamic notes = _myBox.get("notes");
+    if (notes != null && notes is List<dynamic>) {
+      notes.add(note);
+      await _myBox.put("notes", notes);
+    } else {
+      await _myBox.put("notes", [note]);
+    }
+  }
+
+  // Method to delete a note by id
+  Future<void> deleteNote(String noteId) async {
+    final dynamic notes = _myBox.get("notes");
+    if (notes != null && notes is List<dynamic>) {
+      notes.removeWhere((n) => n.id == noteId);
+      await _myBox.put("notes", notes);
+    }
+  }
+}
