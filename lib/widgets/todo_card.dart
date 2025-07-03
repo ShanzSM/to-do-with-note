@@ -5,8 +5,7 @@ import 'package:todo_app/model/todo_model.dart';
 class ToDoCard extends StatelessWidget {
   final ToDoModel task;
   final VoidCallback? onToggleComplete;
-  const ToDoCard({Key? key, required this.task, this.onToggleComplete})
-    : super(key: key);
+  const ToDoCard({super.key, required this.task, this.onToggleComplete});
 
   Color _getPriorityColor() {
     switch (task.deadline.toLowerCase()) {

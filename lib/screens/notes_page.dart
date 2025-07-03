@@ -294,7 +294,7 @@ class _NotesPageState extends State<NotesPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            AppRouter.router.go("/");
+            AppRouter.router.go("/home");
           },
         ),
       ),

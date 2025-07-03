@@ -3,7 +3,7 @@ import 'package:todo_app/app/router.dart';
 import 'package:todo_app/model/note_model.dart';
 import 'package:todo_app/service/note_service.dart';
 import 'package:todo_app/widgets/note_category_card.dart';
-import 'package:todo_app/ui/add_note_page.dart';
+import 'package:todo_app/screens/add_note_page.dart';
 import 'package:hive/hive.dart';
 
 class NotesByCategory extends StatefulWidget {
