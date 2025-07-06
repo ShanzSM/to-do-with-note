@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:todo_app/app/router.dart';
 import 'package:todo_app/model/note_model.dart';
 import 'package:todo_app/model/todo.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import 'package:todo_app/service/auth.dart';
 import 'package:todo_app/model/user_model.dart';
 import 'package:todo_app/screens/wrapper.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:todo_app/app/router.dart';
 
 Future<void> main() async {
   //  Ensure Flutter bindings are initialized
@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'To-Do App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.deepOrange,
         fontFamily: 'Roboto',
       ),
-      home: const Wrapper(),
+      routerConfig: AppRouter.router,
     );
   }
 }

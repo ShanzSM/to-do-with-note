@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/model/note_model.dart';
 import 'package:todo_app/service/note_service.dart';
+import 'package:go_router/go_router.dart';
 
 class AddNotePage extends StatefulWidget {
   final String category;
   final String initialTitle;
   final String initialContent;
   final String noteId;
+
   const AddNotePage({
-    Key? key,
+    super.key,
     required this.category,
     required this.initialTitle,
     required this.initialContent,
     required this.noteId,
-  }) : super(key: key);
+  });
 
   @override
   State<AddNotePage> createState() => _AddNotePageState();
@@ -33,7 +35,7 @@ class _AddNotePageState extends State<AddNotePage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.of(context).pop();
+            context.pop();
           },
           mouseCursor: SystemMouseCursors.click,
         ),
@@ -83,7 +85,9 @@ class _AddNotePageState extends State<AddNotePage> {
               date: DateTime.now(),
             );
             await noteService.addNote(note);
-            Navigator.pop(context, true);
+            if (mounted) {
+              Navigator.pop(context, true);
+            }
           }
         },
         backgroundColor: const Color(0xFF2A2A2A),

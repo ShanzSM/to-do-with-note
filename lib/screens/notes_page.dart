@@ -4,6 +4,7 @@ import 'package:todo_app/model/note_model.dart';
 import 'package:todo_app/service/note_service.dart';
 import 'package:todo_app/widgets/notes_card.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:go_router/go_router.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -27,7 +28,6 @@ class _NotesPageState extends State<NotesPage> {
   //check weather the user is new
   void _checkIfUserNewAndCreateinitialNotes() async {
     final bool isNewUser = await noteService.isNewUser();
-    print(isNewUser);
 
     //if the user is new create the initial notes
     if (isNewUser) {
@@ -36,7 +36,6 @@ class _NotesPageState extends State<NotesPage> {
 
     //Load the Nots
     _loadNotes();
-    print((allNotes.length));
   }
 
   //Load the notes
@@ -47,7 +46,6 @@ class _NotesPageState extends State<NotesPage> {
     setState(() {
       allNotes = loadedNotes;
       notesWithCategory = notesByCategory;
-      print(notesWithCategory);
     });
   }
 
@@ -136,7 +134,7 @@ class _NotesPageState extends State<NotesPage> {
                         });
                         Navigator.of(context).pop();
                         // Navigate to the new category page
-                        AppRouter.router.push(
+                        context.push(
                           "/category",
                           extra: controller.text.trim(),
                         );
@@ -294,7 +292,7 @@ class _NotesPageState extends State<NotesPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            AppRouter.router.go("/home");
+            context.go("/home");
           },
         ),
       ),
@@ -325,7 +323,7 @@ class _NotesPageState extends State<NotesPage> {
                       child: Text(
                         "No notes available , click on the + button to add a new note",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 20,
                         ),
                         textAlign: TextAlign.center,
@@ -384,53 +382,51 @@ class _NotesPageState extends State<NotesPage> {
                       final realIndex = draftCategory != null
                           ? index - 1
                           : index;
-                      return InkWell(
+                      return NotesCard(
+                        noteCategory: notesWithCategory.keys.elementAt(
+                          realIndex,
+                        ),
+                        noOfNotes: notesWithCategory.values
+                            .elementAt(realIndex)
+                            .length,
                         onTap: () {
-                          AppRouter.router.push(
+                          context.push(
                             "/category",
                             extra: notesWithCategory.keys.elementAt(realIndex),
                           );
                         },
-                        child: NotesCard(
-                          noteCategory: notesWithCategory.keys.elementAt(
-                            realIndex,
+                        trailing: PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Colors.white,
                           ),
-                          noOfNotes: notesWithCategory.values
-                              .elementAt(realIndex)
-                              .length,
-                          trailing: PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.more_vert,
-                              color: Colors.white,
+                          color: const Color(0xFF232323),
+                          onSelected: (value) async {
+                            final category = notesWithCategory.keys.elementAt(
+                              realIndex,
+                            );
+                            if (value == 'edit') {
+                              await _editCategory(category);
+                            } else if (value == 'delete') {
+                              await _deleteCategory(category);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text(
+                                'Edit',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
-                            color: const Color(0xFF232323),
-                            onSelected: (value) async {
-                              final category = notesWithCategory.keys.elementAt(
-                                realIndex,
-                              );
-                              if (value == 'edit') {
-                                await _editCategory(category);
-                              } else if (value == 'delete') {
-                                await _deleteCategory(category);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Text(
-                                  'Edit',
-                                  style: TextStyle(color: Colors.white),
-                                ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.white),
                               ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },

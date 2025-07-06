@@ -4,6 +4,8 @@ import 'package:lottie/lottie.dart';
 import 'package:go_router/go_router.dart';
 
 class LoadingScreen extends StatefulWidget {
+  const LoadingScreen({super.key});
+
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
 }

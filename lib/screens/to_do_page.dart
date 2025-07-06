@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:todo_app/model/todo_model.dart';
 import '../widgets/todo_card.dart';
 import 'add_todo_page.dart';
+import 'edit_todo_page.dart';
 import 'package:todo_app/service/todo_service.dart';
+import 'package:go_router/go_router.dart';
 
 class ToDoPage extends StatefulWidget {
   final int initialTabIndex;
@@ -126,9 +128,9 @@ class _ToDoPageState extends State<ToDoPage> {
             side: BorderSide(color: Colors.white, width: 2),
           ),
           onPressed: () async {
-            final newTask = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const AddToDoPage()),
+            final newTask = await context.push(
+              '/add-todo',
+              extra: const AddToDoPage(),
             );
             if (newTask != null && newTask is ToDoModel) {
               _addTask(newTask);
@@ -163,6 +165,18 @@ class _ToDoPageState extends State<ToDoPage> {
                 child: ToDoCard(
                   task: tasks[i],
                   onToggleComplete: () => _toggleComplete(tasks[i]),
+                  onTap: () async {
+                    final updatedTask = await context.push(
+                      '/edit-todo',
+                      extra: EditToDoPage(task: tasks[i]),
+                    );
+                    if (updatedTask != null && updatedTask is ToDoModel) {
+                      // Update the task in the service
+                      ToDoService().removeTask(tasks[i]);
+                      ToDoService().addTask(updatedTask);
+                      setState(() {});
+                    }
+                  },
                 ),
               ),
               if (i != tasks.length - 1) const SizedBox(height: 20),
@@ -183,6 +197,18 @@ class _ToDoPageState extends State<ToDoPage> {
                   child: ToDoCard(
                     task: completedTasks[i],
                     onToggleComplete: () => _toggleComplete(completedTasks[i]),
+                    onTap: () async {
+                      final updatedTask = await context.push(
+                        '/edit-todo',
+                        extra: EditToDoPage(task: completedTasks[i]),
+                      );
+                      if (updatedTask != null && updatedTask is ToDoModel) {
+                        // Update the task in the service
+                        ToDoService().removeTask(completedTasks[i]);
+                        ToDoService().addTask(updatedTask);
+                        setState(() {});
+                      }
+                    },
                   ),
                 ),
                 if (i != completedTasks.length - 1) const SizedBox(height: 20),

@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:todo_app/model/todo_model.dart';
 import 'package:go_router/go_router.dart';
 
-class AddToDoPage extends StatefulWidget {
-  const AddToDoPage({super.key});
+class EditToDoPage extends StatefulWidget {
+  final ToDoModel task;
+
+  const EditToDoPage({super.key, required this.task});
 
   @override
-  State<AddToDoPage> createState() => _AddToDoPageState();
+  State<EditToDoPage> createState() => _EditToDoPageState();
 }
 
-class _AddToDoPageState extends State<AddToDoPage> {
-  final TextEditingController _titleController = TextEditingController();
+class _EditToDoPageState extends State<EditToDoPage> {
+  late TextEditingController _titleController;
   String? _selectedDeadline;
   final List<String> _deadlineOptions = [
     'Today',
@@ -21,6 +23,19 @@ class _AddToDoPageState extends State<AddToDoPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.task.title);
+    _selectedDeadline = widget.task.deadline;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E1E),
@@ -28,7 +43,7 @@ class _AddToDoPageState extends State<AddToDoPage> {
         backgroundColor: const Color(0xFF1E1E1E),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        leading: const BackButton(color: Colors.white),
+        title: const Text('Edit Task', style: TextStyle(color: Colors.white)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -36,7 +51,7 @@ class _AddToDoPageState extends State<AddToDoPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Add New Task',
+              'Edit Task',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -89,24 +104,52 @@ class _AddToDoPageState extends State<AddToDoPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 30),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_titleController.text.isNotEmpty &&
+                          _selectedDeadline != null) {
+                        final updatedTask = ToDoModel(
+                          title: _titleController.text,
+                          deadline: _selectedDeadline!,
+                          isCompleted: widget.task.isCompleted,
+                        );
+                        Navigator.of(context).pop(updatedTask);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text(
+                      'Save Changes',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF2A2A2A),
-        shape: const CircleBorder(
-          side: BorderSide(color: Colors.white, width: 2),
-        ),
-        onPressed: () {
-          if (_titleController.text.isNotEmpty && _selectedDeadline != null) {
-            final newTask = ToDoModel(
-              title: _titleController.text,
-              deadline: _selectedDeadline!,
-            );
-            Navigator.of(context).pop(newTask);
-          }
-        },
-        child: const Icon(Icons.check, color: Colors.white),
       ),
     );
   }
