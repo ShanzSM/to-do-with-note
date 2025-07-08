@@ -4,21 +4,32 @@ import 'package:todo_app/screens/home_page.dart';
 import 'package:todo_app/screens/notes_by_category.dart';
 import 'package:todo_app/screens/notes_page.dart';
 import 'package:todo_app/screens/to_do_page.dart';
+import 'package:todo_app/screens/add_todo_page.dart';
 import 'package:todo_app/screens/loading_screen.dart';
 import 'package:todo_app/screens/wrapper.dart';
+import 'package:todo_app/screens/edit_todo_page.dart';
+import 'package:todo_app/screens/profile_page.dart';
 
 class AppRouter {
   static final router = GoRouter(
     navigatorKey: GlobalKey<NavigatorState>(),
     debugLogDiagnostics: true,
-    initialLocation: '/loading',
+    initialLocation: '/wrapper',
     routes: [
-      // Onboard Screen route
+      // Loading Screen route
       GoRoute(
         name: "loading",
         path: '/loading',
         builder: (context, state) {
           return LoadingScreen();
+        },
+      ),
+      // Wrapper route
+      GoRoute(
+        name: "wrapper",
+        path: '/wrapper',
+        builder: (context, state) {
+          return const Wrapper();
         },
       ),
       // Home Page route
@@ -57,6 +68,21 @@ class AppRouter {
           return const ToDoPage();
         },
       ),
+      GoRoute(
+        name: "add-todo",
+        path: '/add-todo',
+        builder: (context, state) {
+          return const AddToDoPage();
+        },
+      ),
+      GoRoute(
+        name: "edit-todo",
+        path: '/edit-todo',
+        builder: (context, state) {
+          final EditToDoPage editPage = state.extra as EditToDoPage;
+          return editPage;
+        },
+      ),
       //Notes By Category Page
       GoRoute(
         name: 'category',
@@ -67,10 +93,10 @@ class AppRouter {
         },
       ),
       GoRoute(
-        name: "wrapper",
-        path: '/wrapper',
+        name: "profile",
+        path: '/profile',
         builder: (context, state) {
-          return const Wrapper();
+          return const ProfilePage();
         },
       ),
     ],

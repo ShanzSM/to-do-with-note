@@ -4,6 +4,7 @@ import 'package:todo_app/model/todo_model.dart';
 import 'package:todo_app/widgets/category_card.dart';
 import '../widgets/todo_card.dart';
 import 'package:todo_app/screens/to_do_page.dart';
+import 'package:todo_app/screens/edit_todo_page.dart';
 import 'package:todo_app/service/todo_service.dart';
 import 'package:todo_app/service/note_service.dart';
 import 'package:todo_app/service/auth.dart';
@@ -11,6 +12,9 @@ import 'package:provider/provider.dart';
 import 'package:todo_app/model/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,6 +33,8 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<AnimatedListState> _pendingListKey =
       GlobalKey<AnimatedListState>();
   List<ToDoModel> _pendingTasks = [];
+  String _userName = 'Tishan';
+  File? _profileImage;
 
   @override
   void initState() {
@@ -37,9 +43,35 @@ class _HomePageState extends State<HomePage> {
     _loadCounts();
     _startAutoSlide();
     _initPendingTasks();
+    _loadUserData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh pending tasks when dependencies change (like when returning from other pages)
+    _updatePendingTasks();
+    // Refresh user data when returning from profile page
+    _loadUserData();
   }
 
   void _initPendingTasks() {
+    setState(() {
+      _pendingTasks = ToDoService().tasks.where((t) => !t.isCompleted).toList();
+    });
+  }
+
+  void _addPendingTask(ToDoModel task) {
+    setState(() {
+      _pendingTasks.insert(0, task);
+      _pendingListKey.currentState?.insertItem(
+        0,
+        duration: const Duration(milliseconds: 500),
+      );
+    });
+  }
+
+  void _updatePendingTasks() {
     setState(() {
       _pendingTasks = ToDoService().tasks.where((t) => !t.isCompleted).toList();
     });
@@ -71,6 +103,29 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userName = prefs.getString('user_name') ?? 'Tishan';
+      final profileImagePath = prefs.getString('profile_image_path');
+
+      setState(() {
+        _userName = userName;
+        if (profileImagePath != null) {
+          final imageFile = File(profileImagePath);
+          if (imageFile.existsSync()) {
+            _profileImage = imageFile;
+          } else {
+            // Remove the invalid path from SharedPreferences
+            prefs.remove('profile_image_path');
+          }
+        }
+      });
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
   @override
   void dispose() {
     _carouselTimer?.cancel();
@@ -80,8 +135,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final width = size.width;
     final pendingTasks = ToDoService().tasks
         .where((t) => !t.isCompleted)
         .toList();
@@ -113,7 +166,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.10),
+                      color: Colors.black.withValues(alpha: 0.10),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -124,16 +177,16 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          "Hello Tishan",
+                          "Hello $_userName",
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           "Welcome back!",
                           style: TextStyle(color: Colors.black54, fontSize: 15),
@@ -153,15 +206,53 @@ class _HomePageState extends State<HomePage> {
                           constraints: const BoxConstraints(),
                         ),
                         const SizedBox(width: 8),
-                        CircleAvatar(
-                          backgroundColor: Colors.black,
-                          child: const Icon(Icons.person, color: Colors.white),
+                        GestureDetector(
+                          onTap: () {
+                            context.push('/profile');
+                          },
+                          child: CircleAvatar(
+                            backgroundColor: Colors.black,
+                            backgroundImage: _profileImage != null
+                                ? FileImage(_profileImage!)
+                                : null,
+                            child: _profileImage == null
+                                ? const Icon(Icons.person, color: Colors.white)
+                                : null,
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.logout),
                           tooltip: 'Sign Out',
                           onPressed: () async {
-                            await AuthServices().signOut();
+                            try {
+                              print('Logout button pressed');
+                              print(
+                                'Current user before logout: ${FirebaseAuth.instance.currentUser?.uid}',
+                              );
+                              print(
+                                'Provider data: ${FirebaseAuth.instance.currentUser?.providerData.map((p) => p.providerId).toList()}',
+                              );
+
+                              await AuthServices().signOut();
+
+                              print(
+                                'Current user after logout: ${FirebaseAuth.instance.currentUser?.uid}',
+                              );
+
+                              if (mounted) {
+                                context.go('/wrapper');
+                              }
+                            } catch (e) {
+                              print('Error during logout: $e');
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Sign out failed: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           },
                         ),
                       ],
@@ -336,8 +427,9 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     GestureDetector(
                       onTap: () async {
-                        await AppRouter.router.push("/notes");
+                        context.push("/notes");
                         _loadCounts();
+                        _updatePendingTasks();
                       },
                       child: CategoryCard(
                         title: "Notes",
@@ -348,8 +440,9 @@ class _HomePageState extends State<HomePage> {
                     ),
                     GestureDetector(
                       onTap: () async {
-                        await AppRouter.router.push("/todos");
+                        context.push("/todos");
                         _loadCounts();
+                        _updatePendingTasks();
                       },
                       child: CategoryCard(
                         title: "To-Do List",
@@ -439,7 +532,9 @@ class _HomePageState extends State<HomePage> {
                                 const ToDoPage(initialTabIndex: 2),
                           ),
                         );
-                        setState(() {}); // Refresh after returning
+                        setState(() {
+                          _updatePendingTasks();
+                        }); // Refresh after returning
                       },
                       child: const Text(
                         "See All",
@@ -455,32 +550,61 @@ class _HomePageState extends State<HomePage> {
               // Pending Tasks List
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: AnimatedList(
-                  key: _pendingListKey,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  initialItemCount: _pendingTasks.length,
-                  itemBuilder: (context, index, animation) {
-                    final task = _pendingTasks[index];
-                    return SizeTransition(
-                      sizeFactor: animation,
-                      axisAlignment: 0.0,
-                      child: Column(
-                        children: [
-                          ToDoCard(
-                            task: task,
-                            onToggleComplete: () {
-                              _removePendingTask(index);
-                              ToDoService().toggleComplete(task);
-                              _initPendingTasks();
-                            },
+                child: _pendingTasks.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text(
+                            "No pending tasks",
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 16,
+                            ),
                           ),
-                          const SizedBox(height: 20),
-                        ],
+                        ),
+                      )
+                    : AnimatedList(
+                        key: _pendingListKey,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        initialItemCount: _pendingTasks.length,
+                        itemBuilder: (context, index, animation) {
+                          if (index >= _pendingTasks.length) {
+                            return const SizedBox.shrink();
+                          }
+                          final task = _pendingTasks[index];
+                          return SizeTransition(
+                            sizeFactor: animation,
+                            axisAlignment: 0.0,
+                            child: Column(
+                              children: [
+                                ToDoCard(
+                                  task: task,
+                                  onToggleComplete: () {
+                                    _removePendingTask(index);
+                                    ToDoService().toggleComplete(task);
+                                    _updatePendingTasks();
+                                  },
+                                  onTap: () async {
+                                    final updatedTask = await context.push(
+                                      '/edit-todo',
+                                      extra: EditToDoPage(task: task),
+                                    );
+                                    if (updatedTask != null &&
+                                        updatedTask is ToDoModel) {
+                                      // Update the task in the service
+                                      ToDoService().removeTask(task);
+                                      ToDoService().addTask(updatedTask);
+                                      _updatePendingTasks();
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
 
               const SizedBox(height: 20),
@@ -534,6 +658,19 @@ class _HomePageState extends State<HomePage> {
                               ToDoService().toggleComplete(task);
                               setState(() {});
                             },
+                            onTap: () async {
+                              final updatedTask = await context.push(
+                                '/edit-todo',
+                                extra: EditToDoPage(task: task),
+                              );
+                              if (updatedTask != null &&
+                                  updatedTask is ToDoModel) {
+                                // Update the task in the service
+                                ToDoService().removeTask(task);
+                                ToDoService().addTask(updatedTask);
+                                setState(() {});
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -554,15 +691,17 @@ class _HomePageState extends State<HomePage> {
                     label: const Text('Sign in with Google'),
                     onPressed: () async {
                       final result = await AuthServices().signInWithGoogle();
-                      if (result != null) {
-                        // Optionally, show a success message or reload the page
-                        setState(() {});
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Google sign-in failed.'),
-                          ),
-                        );
+                      if (mounted) {
+                        if (result != null) {
+                          // Optionally, show a success message or reload the page
+                          setState(() {});
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Google sign-in failed.'),
+                            ),
+                          );
+                        }
                       }
                     },
                   ),
@@ -575,21 +714,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _removePendingTask(int index) {
-    final removedTask = _pendingTasks.removeAt(index);
-    _pendingListKey.currentState?.removeItem(
-      index,
-      (context, animation) => SizeTransition(
-        sizeFactor: animation,
-        axisAlignment: 0.0,
-        child: Column(
-          children: [
-            ToDoCard(task: removedTask, onToggleComplete: () {}),
-            const SizedBox(height: 20),
-          ],
+    if (index >= 0 && index < _pendingTasks.length) {
+      final removedTask = _pendingTasks.removeAt(index);
+      _pendingListKey.currentState?.removeItem(
+        index,
+        (context, animation) => SizeTransition(
+          sizeFactor: animation,
+          axisAlignment: 0.0,
+          child: Column(
+            children: [
+              ToDoCard(task: removedTask, onToggleComplete: () {}),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
-      ),
-      duration: const Duration(milliseconds: 500),
-    );
+        duration: const Duration(milliseconds: 500),
+      );
+    }
   }
 
   bool isGoogleUser() {
@@ -622,7 +763,7 @@ class _GradientCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

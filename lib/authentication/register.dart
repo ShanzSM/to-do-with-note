@@ -14,6 +14,7 @@ class _RegisterState extends State<Register> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+
   final _formKey = GlobalKey<FormState>();
   bool _isButtonEnabled = false;
   String email = "";
@@ -21,6 +22,9 @@ class _RegisterState extends State<Register> {
   String confirmPassword = "";
   String error = "";
   final _auth = AuthServices();
+  bool _isRegistering = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   void _updateButtonState() {
     setState(() {
@@ -71,16 +75,26 @@ class _RegisterState extends State<Register> {
                 TextFormField(
                   validator: (val) =>
                       val?.isEmpty == true ? "Enter a valid email" : null,
-                  onChanged: (val) {
-                    setState(() {
-                      email = val;
-                    });
-                  },
+                  onChanged: (val) => setState(() => email = val),
                   controller: _emailController,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.black, width: 2),
+                    ),
                     prefixIcon: Icon(Icons.email),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -88,65 +102,125 @@ class _RegisterState extends State<Register> {
                 TextFormField(
                   validator: (val) =>
                       val!.length < 6 ? "Enter a valid password" : null,
-                  onChanged: (val) {
-                    setState(() {
-                      password = val;
-                    });
-                  },
+                  onChanged: (val) => setState(() => password = val),
                   controller: _passwordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                    enabledBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.black, width: 2),
+                    ),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showPassword = !_showPassword;
+                        });
+                      },
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
                   ),
-                  obscureText: true,
+                  obscureText: !_showPassword,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   validator: (val) => val != _passwordController.text
                       ? "Passwords do not match"
                       : null,
-                  onChanged: (val) {
-                    setState(() {
-                      confirmPassword = val;
-                    });
-                  },
-
+                  onChanged: (val) => setState(() => confirmPassword = val),
                   controller: _confirmPasswordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Confirm Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                    enabledBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.black, width: 2),
+                    ),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showConfirmPassword = !_showConfirmPassword;
+                        });
+                      },
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
                   ),
-                  obscureText: true,
+                  obscureText: !_showConfirmPassword,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: _isButtonEnabled
+                  onPressed: _isButtonEnabled && !_isRegistering
                       ? () async {
                           if (_formKey.currentState!.validate()) {
-                            dynamic result = await _auth
+                            setState(() {
+                              _isRegistering = true;
+                              error = '';
+                            });
+
+                            final result = await _auth
                                 .registerWithEmailAndPassword(email, password);
-                            if (result == null) {
+
+                            if (result != null) {
+                              await _auth.signOut();
+                              if (!mounted) return;
+                              _showSuccessDialog();
+                            } else {
                               setState(() {
                                 error =
                                     "Registration failed. Please try again.";
                               });
-                            } else {
-                              // Registration successful, sign out and move to login page
-                              await _auth.signOut();
-                              widget.toggle();
                             }
+
+                            setState(() {
+                              _isRegistering = false;
+                            });
                           }
                         }
                       : null,
-                  child: const Text('Register'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     textStyle: const TextStyle(fontSize: 18),
                   ),
+                  child: _isRegistering
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Register'),
                 ),
                 if (error.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -162,10 +236,7 @@ class _RegisterState extends State<Register> {
                   children: [
                     const Text("Already have an account? "),
                     GestureDetector(
-                      onTap: () {
-                        // TODO: Navigate to login page
-                        widget.toggle();
-                      },
+                      onTap: () => widget.toggle(),
                       child: Text(
                         'Sign In',
                         style: TextStyle(
@@ -181,6 +252,61 @@ class _RegisterState extends State<Register> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Registration Successful!',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'You have successfully registered! Please login to continue.',
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            Center(
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // close dialog
+                    widget.toggle(); // go to login page
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Back to Login',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          actionsAlignment: MainAxisAlignment.center,
+        );
+      },
     );
   }
 }

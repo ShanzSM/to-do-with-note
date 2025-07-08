@@ -12,24 +12,17 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  //ref for AuthService class
-  final AuthServices _auth = AuthServices();
-
-  //create a user from firebase user with uid
-  UserModel? _userWithFirebaseUserUid(User? user) {
-    return user != null ? UserModel(uid: user.uid) : null;
-  }
-
-  //create the stream for checking the auth changes in the user
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
   final _formKey = GlobalKey<FormState>();
   bool _isButtonEnabled = false;
-  //email and password store
   String email = "";
   String password = "";
   String error = "";
+  final _auth = AuthServices();
+  bool _isLoggingIn = false;
+  bool _showPassword = false;
 
   void _updateButtonState() {
     setState(() {
@@ -85,8 +78,14 @@ class _LoginState extends State<Login> {
                   controller: _emailController,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
                     prefixIcon: Icon(Icons.email),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -100,12 +99,28 @@ class _LoginState extends State<Login> {
                     });
                   },
                   controller: _passwordController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showPassword = !_showPassword;
+                        });
+                      },
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
                   ),
-                  obscureText: true,
+                  obscureText: !_showPassword,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
