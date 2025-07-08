@@ -26,7 +26,7 @@ class _NoteCategoryCardState extends State<NoteCategoryCard> {
         borderRadius: BorderRadius.circular(24),
         splashColor: Colors.white24,
         highlightColor: Colors.white10,
-        onTap: () {}, // No action, just visual feedback
+        onTap: () => widget.editNote(),
         child: Card(
           color: Color(0xFF2A2A2A),
           shape: RoundedRectangleBorder(

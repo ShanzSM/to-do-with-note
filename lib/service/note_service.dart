@@ -87,9 +87,13 @@ class NoteService {
   Future<void> updateNote(Note note) async {
     try {
       final dynamic allNotes = await _myBox.get('notes');
-      final int index = allNotes.indexWhere();
+      final int index = allNotes.indexWhere((n) => n.id == note.id);
+      if (index != -1) {
+        allNotes[index] = note;
+        await _myBox.put("notes", allNotes);
+      }
     } catch (err) {
-      print(err.toString());
+      // Handle error silently or log to a proper logging service
     }
   }
 

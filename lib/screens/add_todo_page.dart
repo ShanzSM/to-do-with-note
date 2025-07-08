@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/model/todo_model.dart';
+import 'package:go_router/go_router.dart';
 
 class AddToDoPage extends StatefulWidget {
-  const AddToDoPage({Key? key}) : super(key: key);
+  const AddToDoPage({super.key});
 
   @override
   State<AddToDoPage> createState() => _AddToDoPageState();
@@ -27,6 +28,7 @@ class _AddToDoPageState extends State<AddToDoPage> {
         backgroundColor: const Color(0xFF1E1E1E),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: const BackButton(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
