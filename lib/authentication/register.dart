@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/service/auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Register extends StatefulWidget {
-  final Function toggle;
+  final VoidCallback toggle;
   const Register({super.key, required this.toggle});
 
   @override
@@ -12,12 +13,14 @@ class Register extends StatefulWidget {
 class _RegisterState extends State<Register> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   bool _isButtonEnabled = false;
   String email = "";
+  String name = "";
   String password = "";
   String confirmPassword = "";
   String error = "";
@@ -29,6 +32,7 @@ class _RegisterState extends State<Register> {
   void _updateButtonState() {
     setState(() {
       _isButtonEnabled =
+          _nameController.text.isNotEmpty &&
           _emailController.text.isNotEmpty &&
           _passwordController.text.isNotEmpty &&
           _confirmPasswordController.text.isNotEmpty;
@@ -38,6 +42,7 @@ class _RegisterState extends State<Register> {
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_updateButtonState);
     _emailController.addListener(_updateButtonState);
     _passwordController.addListener(_updateButtonState);
     _confirmPasswordController.addListener(_updateButtonState);
@@ -45,6 +50,7 @@ class _RegisterState extends State<Register> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -72,6 +78,34 @@ class _RegisterState extends State<Register> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
+                TextFormField(
+                  validator: (val) =>
+                      val?.isEmpty == true ? "Enter Full Name" : null,
+                  onChanged: (val) => setState(() => name = val),
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      borderSide: BorderSide(color: Colors.black, width: 2),
+                    ),
+                    prefixIcon: Icon(Icons.email),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 18,
+                      horizontal: 20,
+                    ),
+                  ),
+                  keyboardType: TextInputType.name,
+                ),
+                const SizedBox(height: 16),
+
                 TextFormField(
                   validator: (val) =>
                       val?.isEmpty == true ? "Enter a valid email" : null,
@@ -186,10 +220,18 @@ class _RegisterState extends State<Register> {
                             });
 
                             final result = await _auth
-                                .registerWithEmailAndPassword(email, password);
+                                .registerWithEmailAndPassword(
+                                  email,
+                                  password,
+                                  name,
+                                );
 
                             if (result != null) {
-                              await _auth.signOut();
+                              // Save the user's name to shared preferences
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              await prefs.setString('user_name', name);
+                              // Do NOT sign out here. Let the user stay logged in.
                               if (!mounted) return;
                               _showSuccessDialog();
                             } else {
@@ -274,7 +316,7 @@ class _RegisterState extends State<Register> {
             textAlign: TextAlign.center,
           ),
           content: const Text(
-            'You have successfully registered! Please login to continue.',
+            'You have successfully registered! You are now logged in.',
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
@@ -284,9 +326,9 @@ class _RegisterState extends State<Register> {
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(context).pop(); // close dialog
-                    widget.toggle(); // go to login page
+                    widget.toggle(); // if used here, update to no params
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
@@ -297,7 +339,7 @@ class _RegisterState extends State<Register> {
                     ),
                   ),
                   child: const Text(
-                    'Back to Login',
+                    'Continue',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),

@@ -27,59 +27,94 @@ class _NoteCategoryCardState extends State<NoteCategoryCard> {
         splashColor: Colors.white24,
         highlightColor: Colors.white10,
         onTap: () => widget.editNote(),
-        child: Card(
-          color: Color(0xFF2A2A2A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Responsive sizing based on device width
+            final double deviceWidth = MediaQuery.of(context).size.width;
+            final double deviceHeight = MediaQuery.of(context).size.height;
+            final double cardPadding = deviceWidth * 0.04; // Responsive padding
+            final double titleFontSize =
+                deviceWidth * 0.045; // Responsive title font size
+            final double contentFontSize =
+                deviceWidth * 0.024; // Responsive content font size
+            final double iconSize = deviceWidth * 0.06;
+
+            return Card(
+              color: const Color(0xFF2A2A2A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(deviceWidth * 0.06),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(cardPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => widget.editNote(),
-                      icon: Icon(Icons.edit_outlined, color: Colors.white54),
-                      padding: EdgeInsets.only(right: 2, left: 8),
-                      constraints: BoxConstraints(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          onPressed: () => widget.editNote(),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            color: Colors.white54,
+                            size: iconSize,
+                          ),
+                          padding: EdgeInsets.only(
+                            right: deviceWidth * 0.01,
+                            left: deviceWidth * 0.02,
+                          ),
+                          constraints: const BoxConstraints(),
+                        ),
+                        IconButton(
+                          onPressed: () => widget.removeNote(),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: Colors.white54,
+                            size: iconSize,
+                          ),
+                          padding: EdgeInsets.only(
+                            right: deviceWidth * 0.01,
+                            left: deviceWidth * 0.01,
+                          ),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => widget.removeNote(),
-                      icon: Icon(Icons.delete_outline, color: Colors.white54),
-                      padding: EdgeInsets.only(right: 2, left: 2),
-                      constraints: BoxConstraints(),
+                    Padding(
+                      padding: EdgeInsets.all(deviceWidth * 0.02),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.noteTitle,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: titleFontSize,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: deviceHeight * 0.012),
+                    Text(
+                      widget.noteContent,
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: contentFontSize,
+                      ),
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.left,
                     ),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.noteTitle,
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  widget.noteContent,
-                  style: TextStyle(color: Colors.white54, fontSize: 16),
-                  maxLines: 6,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.left,
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

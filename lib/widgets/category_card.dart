@@ -24,9 +24,9 @@ class CategoryCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.all(6),
-      padding: const EdgeInsets.all(16),
-      width: 170,
-      height: 130,
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      width: MediaQuery.of(context).size.width * 0.42,
+      height: MediaQuery.of(context).size.height * 0.18,
       decoration: BoxDecoration(
         color: isDashed ? Colors.transparent : const Color(0xFF2A2A2A),
         borderRadius: BorderRadius.circular(16),
@@ -35,20 +35,27 @@ class CategoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 32),
-          const SizedBox(height: 10),
+          Icon(
+            icon,
+            color: Colors.white,
+            size: MediaQuery.of(context).size.width * 0.08,
+          ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.012),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: MediaQuery.of(context).size.width * 0.042,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.008),
           Text(
             '$count $countLabel',
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: MediaQuery.of(context).size.width * 0.032,
+            ),
           ),
         ],
       ),

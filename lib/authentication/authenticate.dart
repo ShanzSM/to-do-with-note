@@ -12,6 +12,9 @@ class Authenticate extends StatefulWidget {
 
 class _AuthenticateState extends State<Authenticate> {
   bool login = true;
+  String? registeredEmail;
+  String? registeredPassword;
+
   //toggle page
   void switchpages() {
     setState(() {

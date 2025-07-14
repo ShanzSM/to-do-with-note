@@ -22,7 +22,7 @@ class AuthServices {
   }
 
   //sign in with email and password
-  Future<UserModel?> singnaInUsingEmailAndPassord(
+  Future<UserModel?> signInUsingEmailAndPassword(
     String email,
     String password,
   ) async {
@@ -42,6 +42,7 @@ class AuthServices {
   Future<UserModel?> registerWithEmailAndPassword(
     String email,
     String password,
+    String name,
   ) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
@@ -49,6 +50,9 @@ class AuthServices {
         password: password,
       );
       User? user = result.user;
+      if (user != null) {
+        await user.updateDisplayName(name);
+      }
       return _userWithFirebaseUserUid(user);
     } catch (e) {
       return null;

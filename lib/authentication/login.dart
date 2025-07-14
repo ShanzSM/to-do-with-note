@@ -128,7 +128,7 @@ class _LoginState extends State<Login> {
                       ? () async {
                           if (_formKey.currentState!.validate()) {
                             dynamic result = await _auth
-                                .singnaInUsingEmailAndPassord(email, password);
+                                .signInUsingEmailAndPassword(email, password);
                             if (result == null) {
                               setState(() {
                                 error = "Login failed. Please try again.";

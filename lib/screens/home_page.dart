@@ -33,7 +33,8 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<AnimatedListState> _pendingListKey =
       GlobalKey<AnimatedListState>();
   List<ToDoModel> _pendingTasks = [];
-  String _userName = 'Tishan';
+  String _userName = '';
+
   File? _profileImage;
 
   @override
@@ -179,7 +180,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Hello $_userName",
+                          "Hello ${_userName.split(' ').first.length > 12 ? _userName.split(' ').first.substring(0, 12) + '...' : _userName.split(' ').first}",
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 24,

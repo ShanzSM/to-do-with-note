@@ -337,7 +337,10 @@ class _NotesPageState extends State<NotesPage> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 20,
                       mainAxisSpacing: 20,
-                      childAspectRatio: 6 / 4,
+                      childAspectRatio:
+                          (MediaQuery.of(context).size.width /
+                                  (MediaQuery.of(context).size.height * 0.20))
+                              .clamp(0.7, 1.3),
                     ),
                     itemCount:
                         notesWithCategory.length +

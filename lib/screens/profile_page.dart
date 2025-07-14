@@ -27,14 +27,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _initializeImagePicker() async {
     try {
-      print('Initializing ImagePicker...');
+      // print('Initializing ImagePicker...'); // Avoid print in production
       _picker = ImagePicker();
       setState(() {
         _isImagePickerInitialized = true;
       });
-      print('ImagePicker initialized successfully');
+      // print('ImagePicker initialized successfully'); // Avoid print in production
     } catch (e) {
-      print('Error initializing ImagePicker: $e');
+      // print('Error initializing ImagePicker: $e'); // Avoid print in production
       setState(() {
         _isImagePickerInitialized = false;
       });
@@ -66,7 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
         }
       });
     } catch (e) {
-      print('Error loading user data: $e');
+      // print('Error loading user data: $e'); // Avoid print in production
     }
   }
 
@@ -107,14 +107,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    print('Attempting to pick image from source: $source');
+    // print('Attempting to pick image from source: $source'); // Avoid print in production
 
     if (!_isImagePickerInitialized || _picker == null) {
-      print('ImagePicker not initialized, attempting to reinitialize...');
+      // print('ImagePicker not initialized, attempting to reinitialize...'); // Avoid print in production
       await _initializeImagePicker();
 
       if (_picker == null) {
-        print('Failed to initialize ImagePicker');
+        // print('Failed to initialize ImagePicker'); // Avoid print in production
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -128,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     try {
-      print('Calling pickImage...');
+      // print('Calling pickImage...'); // Avoid print in production
       final XFile? image = await _picker!.pickImage(
         source: source,
         maxWidth: 512,
@@ -136,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
         imageQuality: 75,
       );
 
-      print('Image picker result: ${image?.path}');
+      // print('Image picker result: ${image?.path}'); // Avoid print in production
 
       if (image != null) {
         setState(() {
@@ -156,12 +156,12 @@ class _ProfilePageState extends State<ProfilePage> {
           );
         }
       } else {
-        print('No image selected');
+        // print('No image selected'); // Avoid print in production
       }
     } catch (e) {
-      print('Error picking image: $e');
-      print('Error type: ${e.runtimeType}');
-      print('Error details: ${e.toString()}');
+      // print('Error picking image: $e'); // Avoid print in production
+      // print('Error type: ${e.runtimeType}'); // Avoid print in production
+      // print('Error details: ${e.toString()}'); // Avoid print in production
 
       if (mounted) {
         // Show a more user-friendly error message
@@ -200,12 +200,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _showImageSourceDialog() {
-    print('Showing image source dialog');
-    print('ImagePicker initialized: $_isImagePickerInitialized');
-    print('Picker instance: $_picker');
+    // print('Showing image source dialog'); // Avoid print in production
+    // print('ImagePicker initialized: $_isImagePickerInitialized'); // Avoid print in production
+    // print('Picker instance: $_picker'); // Avoid print in production
 
     if (!_isImagePickerInitialized || _picker == null) {
-      print('ImagePicker not available, showing error');
+      // print('ImagePicker not available, showing error'); // Avoid print in production
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Image picker is not available. Please try again.'),
