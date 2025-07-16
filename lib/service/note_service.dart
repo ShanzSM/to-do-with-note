@@ -1,67 +1,57 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:todo_app/model/note_model.dart';
-import 'package:uuid/uuid.dart';
 
 class NoteService {
-  List<Note> allNotes = [
-    Note(
-      id: const Uuid().v4(),
-      title: "Meeting Notes",
-      category: "Work",
-      content:
-          "Discussed project deadlines and deliverables. Assigned tasks to team members and set up follow-up meetings to track progress.",
-      date: DateTime.now(),
-    ),
-    Note(
-      id: const Uuid().v4(),
-      title: "Grocery List",
-      category: "Personal",
-      content:
-          "Bought milk, eggs, bread, fruits, and vegetables from the local grocery store. Also added some snacks for the week.",
-      date: DateTime.now(),
-    ),
-    Note(
-      id: const Uuid().v4(),
-      title: "Book Recommendations",
-      category: "Hobby",
-      content:
-          "Recently read 'Sapiens' by Yuval Noah Harari, which offered fascinating insights into the history of humankind. Also enjoyed 'Atomic Habits' by James Clear, a practical guide to building good habits and breaking bad ones.",
-      date: DateTime.now(),
-    ),
-  ];
-  //create a new database referance for notes
+  final _firestore = FirebaseFirestore.instance;
 
-  final _myBox = Hive.box("notes");
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
-  //check wheather the user is new user
-
-  Future<bool> isNewUser() async {
-    return _myBox.isEmpty;
+  // Add a new note
+  Future<void> addNote(Note note) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .doc(note.id)
+        .set(note.toMap());
   }
 
-  //method to crate the i initial notes if the box is emty
-  Future<void> createInitialNotes() async {
-    if (_myBox.isEmpty) {
-      await _myBox.put("notes", allNotes);
-    }
-  }
-
-  //Method to load the notes
-
+  // Load all notes for the current user
   Future<List<Note>> loadNotes() async {
-    final dynamic notes = _myBox.get("notes");
-    if (notes != null && notes is List<dynamic>) {
-      return notes.cast<Note>().toList();
-    }
-    return [];
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .get();
+    return snapshot.docs.map((doc) => Note.fromMap(doc.data())).toList();
   }
-  //loop through all notes and create an object where the key is the category and the value is the notes in that category
 
+  // Update a note
+  Future<void> updateNote(Note note) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .doc(note.id)
+        .update(note.toMap());
+  }
+
+  // Delete a note by id
+  Future<void> deleteNote(String noteId) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .doc(noteId)
+        .delete();
+  }
+
+  // Group notes by category
   Map<String, List<Note>> getNotesByCategoryMap(List<Note> allNotes) {
     final Map<String, List<Note>> notesByCategory = {};
-
     for (final note in allNotes) {
-      if (notesByCategory.containsKey((note.category))) {
+      if (notesByCategory.containsKey(note.category)) {
         notesByCategory[note.category]!.add(note);
       } else {
         notesByCategory[note.category] = [note];
@@ -70,50 +60,30 @@ class NoteService {
     return notesByCategory;
   }
 
-  //Method to get note category from the note service
+  // Get notes by category name
   Future<List<Note>> getNotesByCategoryName(String category) async {
-    final dynamic allNotes = await _myBox.get("notes");
-    final List<Note> notes = [];
-
-    for (final note in allNotes) {
-      if (note.category == category) {
-        notes.add(note);
-      }
-    }
-    return notes;
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .where('category', isEqualTo: category)
+        .get();
+    return snapshot.docs.map((doc) => Note.fromMap(doc.data())).toList();
   }
 
-  //method to edit and update notes
-  Future<void> updateNote(Note note) async {
-    try {
-      final dynamic allNotes = await _myBox.get('notes');
-      final int index = allNotes.indexWhere((n) => n.id == note.id);
-      if (index != -1) {
-        allNotes[index] = note;
-        await _myBox.put("notes", allNotes);
-      }
-    } catch (err) {
-      // Handle error silently or log to a proper logging service
-    }
+  // Check if user is new (no notes)
+  Future<bool> isNewUser() async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('notes')
+        .limit(1)
+        .get();
+    return snapshot.docs.isEmpty;
   }
 
-  // Method to add a new note
-  Future<void> addNote(Note note) async {
-    final dynamic notes = _myBox.get("notes");
-    if (notes != null && notes is List<dynamic>) {
-      notes.add(note);
-      await _myBox.put("notes", notes);
-    } else {
-      await _myBox.put("notes", [note]);
-    }
-  }
-
-  // Method to delete a note by id
-  Future<void> deleteNote(String noteId) async {
-    final dynamic notes = _myBox.get("notes");
-    if (notes != null && notes is List<dynamic>) {
-      notes.removeWhere((n) => n.id == noteId);
-      await _myBox.put("notes", notes);
-    }
+  // Create initial notes for new user (optional, can be empty)
+  Future<void> createInitialNotes() async {
+    // You can add default notes here if needed, or leave empty
   }
 }

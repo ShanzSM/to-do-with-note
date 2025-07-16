@@ -15,6 +15,34 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_storage/firebase_storage.dart';
+
+class UserService {
+  final _firestore = FirebaseFirestore.instance;
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+
+  // Future<String> uploadProfilePhoto(File imageFile) async {
+  //   final ref = FirebaseStorage.instance
+  //       .ref()
+  //       .child('profile_photos')
+  //       .child('$_uid.jpg');
+  //   await ref.putFile(imageFile);
+  //   return await ref.getDownloadURL();
+  // }
+
+  Future<void> saveUserProfile({required String name, String? photoUrl}) async {
+    await _firestore.collection('users').doc(_uid).set({
+      'name': name,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final doc = await _firestore.collection('users').doc(_uid).get();
+    return doc.exists ? doc.data() : null;
+  }
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -33,9 +61,11 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<AnimatedListState> _pendingListKey =
       GlobalKey<AnimatedListState>();
   List<ToDoModel> _pendingTasks = [];
+  List<ToDoModel> _allTasks = [];
   String _userName = '';
 
   File? _profileImage;
+  String? _profilePhotoUrl;
 
   @override
   void initState() {
@@ -45,6 +75,7 @@ class _HomePageState extends State<HomePage> {
     _startAutoSlide();
     _initPendingTasks();
     _loadUserData();
+    _loadTasks();
   }
 
   @override
@@ -58,7 +89,7 @@ class _HomePageState extends State<HomePage> {
 
   void _initPendingTasks() {
     setState(() {
-      _pendingTasks = ToDoService().tasks.where((t) => !t.isCompleted).toList();
+      _pendingTasks = _allTasks.where((t) => !t.isCompleted).toList();
     });
   }
 
@@ -74,7 +105,7 @@ class _HomePageState extends State<HomePage> {
 
   void _updatePendingTasks() {
     setState(() {
-      _pendingTasks = ToDoService().tasks.where((t) => !t.isCompleted).toList();
+      _pendingTasks = _allTasks.where((t) => !t.isCompleted).toList();
     });
   }
 
@@ -94,7 +125,7 @@ class _HomePageState extends State<HomePage> {
 
   void _loadCounts() async {
     final notes = await NoteService().loadNotes();
-    final tasks = ToDoService().tasks;
+    final tasks = _allTasks;
     final categories = notes.map((n) => n.category).toSet();
     setState(() {
       notesCount = notes.length;
@@ -104,26 +135,49 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _loadUserData() async {
+  Future<void> _loadUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userName = prefs.getString('user_name') ?? 'Tishan';
-      final profileImagePath = prefs.getString('profile_image_path');
-
+      final userData = await UserService().getUserProfile();
       setState(() {
-        _userName = userName;
-        if (profileImagePath != null) {
-          final imageFile = File(profileImagePath);
-          if (imageFile.existsSync()) {
-            _profileImage = imageFile;
-          } else {
-            // Remove the invalid path from SharedPreferences
-            prefs.remove('profile_image_path');
-          }
+        _userName = userData?['name'] ?? 'Tishan';
+        if (userData?['photoUrl'] != null) {
+          // Use NetworkImage for the profile photo
+          _profilePhotoUrl = userData!['photoUrl'];
         }
       });
     } catch (e) {
-      print('Error loading user data: $e');
+      // Handle error
+    }
+  }
+
+  Future<void> _loadTasks() async {
+    _allTasks = await ToDoService().loadTasks();
+    // Sort tasks by deadline (earliest/most urgent first)
+    _allTasks.sort(
+      (a, b) => _deadlineToPriority(
+        a.deadline,
+      ).compareTo(_deadlineToPriority(b.deadline)),
+    );
+    setState(() {
+      _pendingTasks = _allTasks.where((t) => !t.isCompleted).toList();
+    });
+  }
+
+  int _deadlineToPriority(String deadline) {
+    // Lower value = higher priority
+    switch (deadline) {
+      case 'Today':
+        return 0;
+      case 'Tomorrow':
+        return 1;
+      case 'Day After Tomorrow':
+        return 2;
+      case 'This Week':
+        return 3;
+      case 'Next Week':
+        return 4;
+      default:
+        return 5;
     }
   }
 
@@ -136,12 +190,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingTasks = ToDoService().tasks
-        .where((t) => !t.isCompleted)
-        .toList();
-    final completedTasksCount = ToDoService().tasks
-        .where((t) => t.isCompleted)
-        .length;
+    final pendingTasks = _allTasks.where((t) => !t.isCompleted).toList();
+    final completedTasksCount = _allTasks.where((t) => t.isCompleted).length;
     final totalTasks = pendingTasks.length + completedTasksCount;
     final user = Provider.of<UserModel?>(context);
 
@@ -213,10 +263,10 @@ class _HomePageState extends State<HomePage> {
                           },
                           child: CircleAvatar(
                             backgroundColor: Colors.black,
-                            backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
+                            backgroundImage: _profilePhotoUrl != null
+                                ? NetworkImage(_profilePhotoUrl!)
                                 : null,
-                            child: _profileImage == null
+                            child: _profilePhotoUrl == null
                                 ? const Icon(Icons.person, color: Colors.white)
                                 : null,
                           ),
@@ -441,9 +491,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                     GestureDetector(
                       onTap: () async {
-                        context.push("/todos");
-                        _loadCounts();
-                        _updatePendingTasks();
+                        await context.push("/todos");
+                        await _loadTasks();
                       },
                       child: CategoryCard(
                         title: "To-Do List",
@@ -581,24 +630,13 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 ToDoCard(
                                   task: task,
-                                  onToggleComplete: () {
+                                  onToggleComplete: () async {
+                                    // Mark as complete, fade out, and update lists
                                     _removePendingTask(index);
-                                    ToDoService().toggleComplete(task);
-                                    _updatePendingTasks();
+                                    await ToDoService().toggleComplete(task);
+                                    await _loadTasks();
                                   },
-                                  onTap: () async {
-                                    final updatedTask = await context.push(
-                                      '/edit-todo',
-                                      extra: EditToDoPage(task: task),
-                                    );
-                                    if (updatedTask != null &&
-                                        updatedTask is ToDoModel) {
-                                      // Update the task in the service
-                                      ToDoService().removeTask(task);
-                                      ToDoService().addTask(updatedTask);
-                                      _updatePendingTasks();
-                                    }
-                                  },
+                                  // Remove onTap for editing
                                 ),
                                 const SizedBox(height: 20),
                               ],
@@ -610,103 +648,91 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 20),
 
-              // Completed Tasks Header and List
-              if (completedTasksCount > 0) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text(
-                        "Completed Tasks",
-                        style: TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+              // Completed Tasks Header and List (always show below pending tasks)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      "Completed Tasks",
+                      style: TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      for (final task in ToDoService().tasks.where(
-                        (t) => t.isCompleted,
-                      )) ...[
-                        Dismissible(
-                          key: ValueKey(task.title + task.deadline),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            color: Colors.redAccent,
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _allTasks.where((t) => t.isCompleted).isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text(
+                            "No completed tasks",
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 16,
                             ),
-                          ),
-                          onDismissed: (direction) {
-                            setState(() {
-                              ToDoService().removeTask(task);
-                            });
-                          },
-                          child: ToDoCard(
-                            task: task,
-                            onToggleComplete: () {
-                              ToDoService().toggleComplete(task);
-                              setState(() {});
-                            },
-                            onTap: () async {
-                              final updatedTask = await context.push(
-                                '/edit-todo',
-                                extra: EditToDoPage(task: task),
-                              );
-                              if (updatedTask != null &&
-                                  updatedTask is ToDoModel) {
-                                // Update the task in the service
-                                ToDoService().removeTask(task);
-                                ToDoService().addTask(updatedTask);
-                                setState(() {});
-                              }
-                            },
                           ),
                         ),
-                        const SizedBox(height: 20),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-              if (user != null && !isGoogleUser())
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: OutlinedButton.icon(
-                    icon: Image.asset(
-                      'assets/google.png',
-                      height: 24,
-                      width: 24,
-                    ),
-                    label: const Text('Sign in with Google'),
-                    onPressed: () async {
-                      final result = await AuthServices().signInWithGoogle();
-                      if (mounted) {
-                        if (result != null) {
-                          // Optionally, show a success message or reload the page
-                          setState(() {});
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Google sign-in failed.'),
-                            ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _allTasks.where((t) => t.isCompleted).length,
+                        itemBuilder: (context, index) {
+                          final completedTasks = List<ToDoModel>.from(
+                            _allTasks.where((t) => t.isCompleted),
                           );
-                        }
-                      }
-                    },
-                  ),
-                ),
+                          // Sort by latest completed (assuming createdAt is when completed)
+                          completedTasks.sort(
+                            (a, b) => b.createdAt.compareTo(a.createdAt),
+                          );
+                          final task = completedTasks[index];
+                          return Column(
+                            children: [
+                              Dismissible(
+                                key: ValueKey(task.id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                  ),
+                                  color: Colors.redAccent,
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                onDismissed: (direction) {
+                                  setState(() {
+                                    _allTasks.removeWhere(
+                                      (t) => t.id == task.id,
+                                    );
+                                  });
+                                  ToDoService().removeTask(task.id);
+                                },
+                                child: ToDoCard(
+                                  task: task,
+                                  onToggleComplete: () async {
+                                    await ToDoService().toggleComplete(task);
+                                    await _loadTasks();
+                                  },
+                                  // Remove onTap for editing
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          );
+                        },
+                      ),
+              ),
             ],
           ),
         ),

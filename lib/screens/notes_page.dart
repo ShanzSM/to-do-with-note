@@ -35,7 +35,7 @@ class _NotesPageState extends State<NotesPage> {
     }
 
     //Load the Nots
-    _loadNotes();
+    await _loadNotes();
   }
 
   //Load the notes
@@ -211,7 +211,7 @@ class _NotesPageState extends State<NotesPage> {
       },
     );
     if (newName != null && newName != oldCategory && newName.isNotEmpty) {
-      // Update all notes in this category
+      // Update all notes in this category in Firestore
       final notes = notesWithCategory[oldCategory] ?? [];
       for (final note in notes) {
         final updatedNote = Note(

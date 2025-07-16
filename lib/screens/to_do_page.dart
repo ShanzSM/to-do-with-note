@@ -15,51 +15,47 @@ class ToDoPage extends StatefulWidget {
 }
 
 class _ToDoPageState extends State<ToDoPage> {
-  void _addTask(ToDoModel task) {
-    setState(() {
-      ToDoService().addTask(task);
-    });
+  List<ToDoModel> _allTasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
   }
 
-  void _removeTask(ToDoModel task) {
-    setState(() {
-      ToDoService().removeTask(task);
-    });
+  Future<void> _loadTasks() async {
+    _allTasks = await ToDoService().loadTasks();
+    setState(() {});
   }
 
-  void _toggleComplete(ToDoModel task) {
-    setState(() {
-      final wasCompleted = task.isCompleted;
-      ToDoService().toggleComplete(task);
-      // Enforce max 4 completed tasks
-      final completed = ToDoService().tasks
-          .where((t) => t.isCompleted)
-          .toList();
-      if (!wasCompleted && task.isCompleted && completed.length > 4) {
-        // Remove the oldest completed task
-        final oldest = ToDoService().tasks.indexWhere((t) => t.isCompleted);
-        if (oldest != -1) {
-          ToDoService().removeTask(ToDoService().tasks[oldest]);
-        }
-      }
-    });
+  Future<void> _addTask(ToDoModel task) async {
+    await ToDoService().addTask(task);
+    await _loadTasks();
   }
 
-  List<ToDoModel> get _todayTasks => ToDoService().tasks
-      .where((t) => t.deadline == 'Today' && !t.isCompleted)
-      .toList();
-  List<ToDoModel> get _pendingTasks => ToDoService().tasks
-      .where((t) => t.deadline != 'Today' && !t.isCompleted)
-      .toList();
+  Future<void> _removeTask(ToDoModel task) async {
+    await ToDoService().removeTask(task.id);
+    await _loadTasks();
+  }
+
+  Future<void> _toggleComplete(ToDoModel task) async {
+    await ToDoService().toggleComplete(task);
+    await _loadTasks();
+  }
+
+  List<ToDoModel> get _todayTasks =>
+      _allTasks.where((t) => t.deadline == 'Today' && !t.isCompleted).toList();
+  List<ToDoModel> get _pendingTasks =>
+      _allTasks.where((t) => t.deadline != 'Today' && !t.isCompleted).toList();
   List<ToDoModel> get _completedTasks {
-    final completed = ToDoService().tasks.where((t) => t.isCompleted).toList();
+    final completed = _allTasks.where((t) => t.isCompleted).toList();
     return completed.length > 4
         ? completed.sublist(completed.length - 4)
         : completed;
   }
 
   List<ToDoModel> get _activeTasks =>
-      ToDoService().tasks.where((t) => !t.isCompleted).toList();
+      _allTasks.where((t) => !t.isCompleted).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +129,7 @@ class _ToDoPageState extends State<ToDoPage> {
               extra: const AddToDoPage(),
             );
             if (newTask != null && newTask is ToDoModel) {
-              _addTask(newTask);
+              await _addTask(newTask);
             }
           },
           child: const Icon(Icons.add, color: Colors.white),
@@ -172,8 +168,9 @@ class _ToDoPageState extends State<ToDoPage> {
                     );
                     if (updatedTask != null && updatedTask is ToDoModel) {
                       // Update the task in the service
-                      ToDoService().removeTask(tasks[i]);
-                      ToDoService().addTask(updatedTask);
+                      await ToDoService().removeTask(tasks[i].id);
+                      await ToDoService().addTask(updatedTask);
+                      await _loadTasks();
                       setState(() {});
                     }
                   },
@@ -204,8 +201,9 @@ class _ToDoPageState extends State<ToDoPage> {
                       );
                       if (updatedTask != null && updatedTask is ToDoModel) {
                         // Update the task in the service
-                        ToDoService().removeTask(completedTasks[i]);
-                        ToDoService().addTask(updatedTask);
+                        await ToDoService().removeTask(completedTasks[i].id);
+                        await ToDoService().addTask(updatedTask);
+                        await _loadTasks();
                         setState(() {});
                       }
                     },

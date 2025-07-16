@@ -16,17 +16,6 @@ Future<void> main() async {
   //  Initialize Firebase
   await Firebase.initializeApp();
 
-  //  Initialize Hive with Flutter support
-  await Hive.initFlutter();
-
-  //  Register adapters
-  Hive.registerAdapter(NoteModelAdapter());
-  Hive.registerAdapter(TodoAdapter());
-
-  //  Open boxes
-  await Hive.openBox('notes');
-  await Hive.openBox('todos');
-
   runApp(
     StreamProvider<UserModel?>.value(
       initialData: UserModel(uid: "*"),

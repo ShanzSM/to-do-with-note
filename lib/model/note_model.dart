@@ -1,18 +1,10 @@
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-part 'note_model.g.dart';
 
-@HiveType(typeId: 2)
 class Note {
-  @HiveField(0)
   final String id;
-  @HiveField(1)
   final String title;
-  @HiveField(2)
   final String category;
-  @HiveField(3)
   final String content;
-  @HiveField(4)
   final DateTime date;
 
   Note({
@@ -22,4 +14,20 @@ class Note {
     required this.content,
     required this.date,
   }) : id = id ?? const Uuid().v4();
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'title': title,
+    'category': category,
+    'content': content,
+    'date': date.toIso8601String(),
+  };
+
+  factory Note.fromMap(Map<String, dynamic> map) => Note(
+    id: map['id'],
+    title: map['title'],
+    category: map['category'],
+    content: map['content'],
+    date: DateTime.parse(map['date']),
+  );
 }

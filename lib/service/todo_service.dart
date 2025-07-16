@@ -1,42 +1,60 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:todo_app/model/todo_model.dart';
 
 class ToDoService {
-  static final ToDoService _instance = ToDoService._internal();
-  factory ToDoService() => _instance;
-  ToDoService._internal();
+  final _firestore = FirebaseFirestore.instance;
 
-  final List<ToDoModel> _tasks = [
-    ToDoModel(
-      title: "Finish Hi-Fi design of notes mobile app",
-      deadline: "Today",
-    ),
-    ToDoModel(title: "Finish Prototype notes mobile app", deadline: "Today"),
-    ToDoModel(
-      title: "Finish Home notes mobile app Using flutter and dart",
-      deadline: "Tomorrow",
-    ),
-    ToDoModel(title: "Another pending task", deadline: "This Week"),
-    ToDoModel(title: "Old pending task", deadline: "Next Week"),
-  ];
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
-  List<ToDoModel> get tasks => List.unmodifiable(_tasks);
-
-  void addTask(ToDoModel task) {
-    _tasks.insert(0, task);
+  // Add a new task
+  Future<void> addTask(ToDoModel task) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('tasks')
+        .doc(task.id)
+        .set(task.toMap());
   }
 
-  void removeTask(ToDoModel task) {
-    _tasks.remove(task);
+  // Load all tasks for the current user
+  Future<List<ToDoModel>> loadTasks() async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('tasks')
+        .get();
+    return snapshot.docs.map((doc) => ToDoModel.fromMap(doc.data())).toList();
   }
 
-  void toggleComplete(ToDoModel task) {
-    final idx = _tasks.indexOf(task);
-    if (idx != -1) {
-      _tasks[idx] = ToDoModel(
-        title: task.title,
-        deadline: task.deadline,
-        isCompleted: !task.isCompleted,
-      );
-    }
+  // Remove a task by id
+  Future<void> removeTask(String taskId) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('tasks')
+        .doc(taskId)
+        .delete();
+  }
+
+  // Toggle completion status of a task
+  Future<void> toggleComplete(ToDoModel task) async {
+    await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('tasks')
+        .doc(task.id)
+        .update({'isCompleted': !task.isCompleted});
+  }
+
+  // Get tasks by deadline (e.g., 'Today', 'Tomorrow', etc.)
+  Future<List<ToDoModel>> getTasksByDeadline(String deadline) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_uid)
+        .collection('tasks')
+        .where('deadline', isEqualTo: deadline)
+        .get();
+    return snapshot.docs.map((doc) => ToDoModel.fromMap(doc.data())).toList();
   }
 }

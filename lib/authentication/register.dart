@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/service/auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:todo_app/screens/home_page.dart' show UserService;
 
 class Register extends StatefulWidget {
   final VoidCallback toggle;
@@ -231,6 +232,8 @@ class _RegisterState extends State<Register> {
                               final prefs =
                                   await SharedPreferences.getInstance();
                               await prefs.setString('user_name', name);
+                              // Save the user's name to Firestore for home page app bar
+                              await UserService().saveUserProfile(name: name);
                               // Do NOT sign out here. Let the user stay logged in.
                               if (!mounted) return;
                               _showSuccessDialog();

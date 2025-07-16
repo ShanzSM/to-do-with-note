@@ -2,7 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_storage/firebase_storage.dart';
+
+class UserService {
+  final _firestore = FirebaseFirestore.instance;
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
+
+  Future<void> saveUserProfile({required String name, String? photoUrl}) async {
+    await _firestore.collection('users').doc(_uid).set({
+      'name': name,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final doc = await _firestore.collection('users').doc(_uid).get();
+    return doc.exists ? doc.data() : null;
+  }
+
+  // Future<String> uploadProfilePhoto(File imageFile) async {
+  //   final ref = FirebaseStorage.instance
+  //       .ref()
+  //       .child('profile_photos')
+  //       .child('$_uid.jpg');
+  //   await ref.putFile(imageFile);
+  //   return await ref.getDownloadURL();
+  // }
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,6 +42,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _nameController = TextEditingController();
   File? _selectedImage;
+  String? _profilePhotoUrl;
   ImagePicker? _picker;
   bool _isLoading = false;
   bool _isImagePickerInitialized = false;
@@ -27,14 +56,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _initializeImagePicker() async {
     try {
-      // print('Initializing ImagePicker...'); // Avoid print in production
       _picker = ImagePicker();
       setState(() {
         _isImagePickerInitialized = true;
       });
-      // print('ImagePicker initialized successfully'); // Avoid print in production
     } catch (e) {
-      // print('Error initializing ImagePicker: $e'); // Avoid print in production
       setState(() {
         _isImagePickerInitialized = false;
       });
@@ -49,24 +75,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userName = prefs.getString('user_name') ?? 'Tishan';
-      final profileImagePath = prefs.getString('profile_image_path');
-
+      final userData = await UserService().getUserProfile();
       setState(() {
-        _nameController.text = userName;
-        if (profileImagePath != null) {
-          final imageFile = File(profileImagePath);
-          if (imageFile.existsSync()) {
-            _selectedImage = imageFile;
-          } else {
-            // Remove the invalid path from SharedPreferences
-            prefs.remove('profile_image_path');
-          }
+        _nameController.text = userData?['name'] ?? '';
+        if (userData?['photoUrl'] != null) {
+          _profilePhotoUrl = userData!['photoUrl'];
         }
       });
     } catch (e) {
-      // print('Error loading user data: $e'); // Avoid print in production
+      // Handle error
     }
   }
 
@@ -76,9 +93,10 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', _nameController.text.trim());
-
+      await UserService().saveUserProfile(
+        name: _nameController.text.trim(),
+        photoUrl: _profilePhotoUrl,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -106,47 +124,33 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    // print('Attempting to pick image from source: $source'); // Avoid print in production
-
+  Future<void> _pickImageFromGallery() async {
     if (!_isImagePickerInitialized || _picker == null) {
-      // print('ImagePicker not initialized, attempting to reinitialize...'); // Avoid print in production
       await _initializeImagePicker();
-
-      if (_picker == null) {
-        // print('Failed to initialize ImagePicker'); // Avoid print in production
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image picker is not available. Please try again.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
+      if (_picker == null) return;
     }
-
     try {
-      // print('Calling pickImage...'); // Avoid print in production
       final XFile? image = await _picker!.pickImage(
-        source: source,
+        source: ImageSource.gallery,
         maxWidth: 512,
         maxHeight: 512,
         imageQuality: 75,
       );
-
-      // print('Image picker result: ${image?.path}'); // Avoid print in production
-
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
         });
-
-        // Save image path to SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('profile_image_path', image.path);
-
+        // Upload to Firebase Storage and save URL in Firestore
+        // final photoUrl = await UserService().uploadProfilePhoto(
+        //   _selectedImage!,
+        // );
+        // setState(() {
+        //   _profilePhotoUrl = photoUrl;
+        // });
+        await UserService().saveUserProfile(
+          name: _nameController.text.trim(),
+          // photoUrl: photoUrl,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -155,108 +159,31 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           );
         }
-      } else {
-        // print('No image selected'); // Avoid print in production
       }
     } catch (e) {
-      // print('Error picking image: $e'); // Avoid print in production
-      // print('Error type: ${e.runtimeType}'); // Avoid print in production
-      // print('Error details: ${e.toString()}'); // Avoid print in production
-
-      if (mounted) {
-        // Show a more user-friendly error message
-        String errorMessage =
-            'Unable to access camera/gallery. Please check permissions.';
-
-        if (e.toString().contains('channel-error')) {
-          errorMessage = 'Image picker is not available. Please try again.';
-        } else if (e.toString().contains('permission')) {
-          errorMessage =
-              'Permission denied. Please grant camera/gallery permissions in settings.';
-        } else if (e.toString().contains('camera')) {
-          errorMessage =
-              'Camera not available. Please try using gallery instead.';
-        } else if (e.toString().contains('NoSuchMethodError')) {
-          errorMessage =
-              'Image picker plugin not properly initialized. Please restart the app.';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: () {
-                _initializeImagePicker();
-              },
-            ),
-          ),
-        );
-      }
+      // Handle error as before
     }
   }
 
   void _showImageSourceDialog() {
-    // print('Showing image source dialog'); // Avoid print in production
-    // print('ImagePicker initialized: $_isImagePickerInitialized'); // Avoid print in production
-    // print('Picker instance: $_picker'); // Avoid print in production
-
-    if (!_isImagePickerInitialized || _picker == null) {
-      // print('ImagePicker not available, showing error'); // Avoid print in production
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Image picker is not available. Please try again.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        title: const Text(
-          'Select Image Source',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.white),
-              title: const Text(
-                'Camera',
-                style: TextStyle(color: Colors.white),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Gallery'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await _pickImageFromGallery();
+                },
               ),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.white),
-              title: const Text(
-                'Gallery',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -290,16 +217,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         CircleAvatar(
                           radius: 60,
-                          backgroundColor: Colors.grey[800],
+                          backgroundColor: Colors.black,
                           backgroundImage: _selectedImage != null
                               ? FileImage(_selectedImage!)
-                              : null,
-                          child: _selectedImage == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.white,
-                                )
+                              : (_profilePhotoUrl != null
+                                        ? NetworkImage(_profilePhotoUrl!)
+                                        : null)
+                                    as ImageProvider?,
+                          child:
+                              (_selectedImage == null &&
+                                  _profilePhotoUrl == null)
+                              ? const Icon(Icons.person, color: Colors.white)
                               : null,
                         ),
                         Positioned(

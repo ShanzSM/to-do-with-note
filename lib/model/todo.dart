@@ -1,18 +1,10 @@
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-part 'todo.g.dart';
 
-@HiveType(typeId: 1)
 class Todo {
-  @HiveField(0)
   final String id;
-  @HiveField(1)
   final String title;
-  @HiveField(2)
   final DateTime time;
-  @HiveField(3)
   final DateTime date;
-  @HiveField(4)
   final bool isDone;
 
   Todo({
@@ -22,4 +14,20 @@ class Todo {
     required this.date,
     required this.isDone,
   }) : id = id ?? const Uuid().v4();
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'title': title,
+    'time': time.toIso8601String(),
+    'date': date.toIso8601String(),
+    'isDone': isDone,
+  };
+
+  factory Todo.fromMap(Map<String, dynamic> map) => Todo(
+    id: map['id'],
+    title: map['title'],
+    time: DateTime.parse(map['time']),
+    date: DateTime.parse(map['date']),
+    isDone: map['isDone'] ?? false,
+  );
 }

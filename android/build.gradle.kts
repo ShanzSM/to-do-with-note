@@ -3,7 +3,7 @@ import org.gradle.api.file.Directory
 
 plugins {
    
-    id("com.google.gms.google-services") version "4.4.3" apply false 
+    id("com.google.gms.google-services") version "4.4.3" apply false
 }
 
 allprojects {
